@@ -2094,8 +2094,10 @@ def create_step(label, commands, platform, shards=1, soft_fail=None):
         step["label"] += " (shard %n)"
         step["parallelism"] = shards
 
-    if soft_fail:
+    if soft_fail is not None:
         step["soft_fail"] = {"exit_status": soft_fail}
+    else:
+         step["soft_fail"] = {"exit_status": 0}
 
     # Enforce a global 8 hour job timeout.
     step["timeout_in_minutes"] = 8 * 60
