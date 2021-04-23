@@ -2078,7 +2078,7 @@ def terminate_background_process(process):
             process.kill()
 
 
-def create_step(label, commands, platform, shards=1):
+def create_step(label, commands, platform, shards=1, soft_fail=None):
     if "docker-image" in PLATFORMS[platform]:
         step = create_docker_step(
             label, image=PLATFORMS[platform]["docker-image"], commands=commands
@@ -2093,6 +2093,9 @@ def create_step(label, commands, platform, shards=1):
     if shards > 1:
         step["label"] += " (shard %n)"
         step["parallelism"] = shards
+
+    if soft_fail:
+        step["soft_fail"] = {"exit_status": soft_fail}
 
     # Enforce a global 8 hour job timeout.
     step["timeout_in_minutes"] = 8 * 60
@@ -2218,6 +2221,7 @@ def print_project_pipeline(
     for task, task_config in task_configs.items():
         platform = get_platform_for_task(task, task_config)
         task_name = task_config.get("name")
+        soft_fail = task_config.get("soft_fail")
 
         # We override the Bazel version in downstream pipelines. This means that two tasks that
         # only differ in the value of their explicit "bazel" field will be identical in the
@@ -2249,6 +2253,7 @@ def print_project_pipeline(
             platform=platform,
             task=task,
             task_name=task_name,
+            soft_fail=soft_fail,
             project_name=project_name,
             http_config=http_config,
             file_config=file_config,
@@ -2444,6 +2449,7 @@ def runner_step(
     platform,
     task,
     task_name=None,
+    soft_fail=None,
     project_name=None,
     http_config=None,
     file_config=None,
@@ -2471,7 +2477,7 @@ def runner_step(
         command += " --incompatible_flag=" + flag
     label = create_label(platform, project_name, task_name=task_name)
     return create_step(
-        label=label, commands=[fetch_bazelcipy_command(), command], platform=platform, shards=shards
+        label=label, commands=[fetch_bazelcipy_command(), command], platform=platform, shards=shards, soft_fail=soft_fail
     )
 
 
