@@ -2095,12 +2095,7 @@ def create_step(label, commands, platform, shards=1, soft_fail=None):
         step["parallelism"] = shards
 
     if soft_fail is not None:
-        commands = ["buildkite-agent annotate --style=info '{}'".format(soft_fail)]
-        return create_step(
-            label=label,
-            commands=commands,
-            platform=DEFAULT_PLATFORM,
-        )
+        step["soft_fail"] = {"exit_status": soft_fail}
 
     # Enforce a global 8 hour job timeout.
     step["timeout_in_minutes"] = 8 * 60
