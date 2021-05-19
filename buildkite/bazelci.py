@@ -2316,6 +2316,18 @@ def print_project_pipeline(
                 platform=DEFAULT_PLATFORM,
             )
         )
+    pipeline_steps.append({"wait": None, "continue_on_failure": True})
+    pipeline_steps.append(
+        create_step(
+            label="Print Steps State",
+            commands=[
+                fetch_bazelcipy_command(),
+                PLATFORMS[DEFAULT_PLATFORM]["python"]
+                + " bazelci.py print_steps_state",
+            ],
+            platform=DEFAULT_PLATFORM,
+        )
+    )
 
     if "validate_config" in configs:
         pipeline_steps += create_config_validation_steps()
@@ -2959,7 +2971,22 @@ def get_last_green_commit(last_green_commit_url):
     except subprocess.CalledProcessError:
         return None
 
+def print_steps_state():
+    org_slug = os.getenv("BUILDKITE_ORGANIZATION_SLUG")
+    pipeline_slug = os.getenv("BUILDKITE_PIPELINE_SLUG")
+    build_number = os.getenv("BUILDKITE_BUILD_NUMBER")
+    current_job_id = os.getenv("BUILDKITE_JOB_ID")
 
+    client = BuildkiteClient(org=org_slug, pipeline=pipeline_slug)
+    build_info = client.get_build_info(build_number)
+    
+    jobs_state = [j.get("state") for j in build_info["jobs"]]
+    if failing_jobs:
+        raise BuildkiteException(
+            "Steps state: {}".format(", ".join(jobs_state)
+            )
+        )
+    
 def try_update_last_green_commit():
     org_slug = os.getenv("BUILDKITE_ORGANIZATION_SLUG")
     pipeline_slug = os.getenv("BUILDKITE_PIPELINE_SLUG")
@@ -2968,7 +2995,7 @@ def try_update_last_green_commit():
 
     client = BuildkiteClient(org=org_slug, pipeline=pipeline_slug)
     build_info = client.get_build_info(build_number)
-
+        
     # Find any failing steps other than Buildifier and steps with soft_fail enabled and "try update last green".
     def has_failed(job):
         state = job.get("state")
@@ -2980,7 +3007,7 @@ def try_update_last_green_commit():
             and job["name"] != BUILDIFIER_STEP_NAME
         )
 
-    failing_jobs = [j.get("state") for j in build_info["jobs"] if has_failed(j)]
+    failing_jobs = [j["name"] for j in build_info["jobs"] if has_failed(j)]
     if failing_jobs:
         raise BuildkiteException(
             "Cannot update last green commit due to {} failing step(s): {}".format(
@@ -3296,6 +3323,7 @@ def main(argv=None):
 
     subparsers.add_parser("publish_binaries")
     subparsers.add_parser("try_update_last_green_commit")
+    subparsers.add_parser("print_steps_state")
     subparsers.add_parser("try_update_last_green_downstream_commit")
 
     args = parser.parse_args(argv)
@@ -3369,6 +3397,8 @@ def main(argv=None):
         elif args.subparsers_name == "try_update_last_green_commit":
             # Update the last green commit of a project pipeline
             try_update_last_green_commit()
+        elif args.subparsers_name == "print_steps_state":
+            print_steps_state()
         elif args.subparsers_name == "try_update_last_green_downstream_commit":
             # Update the last green commit of the downstream pipeline
             try_update_last_green_downstream_commit()
