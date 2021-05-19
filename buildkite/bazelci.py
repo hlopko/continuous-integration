@@ -2980,7 +2980,7 @@ def print_steps_state():
     client = BuildkiteClient(org=org_slug, pipeline=pipeline_slug)
     build_info = client.get_build_info(build_number)
     
-    jobs_state = [j.get("state") for j in build_info["jobs"]]
+    jobs_state = [j.get("state") for j in build_info["jobs"] if j.get("state") is not None]
     raise BuildkiteException(
        "Steps state: {}".format(", ".join(jobs_state))
     )
