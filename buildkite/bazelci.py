@@ -2981,11 +2981,9 @@ def print_steps_state():
     build_info = client.get_build_info(build_number)
     
     jobs_state = [j.get("state") for j in build_info["jobs"]]
-    if failing_jobs:
-        raise BuildkiteException(
-            "Steps state: {}".format(", ".join(jobs_state)
-            )
-        )
+    raise BuildkiteException(
+       "Steps state: {}".format(", ".join(jobs_state))
+    )
     
 def try_update_last_green_commit():
     org_slug = os.getenv("BUILDKITE_ORGANIZATION_SLUG")
